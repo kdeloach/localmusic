@@ -1,0 +1,66 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8">
+    <title>localmusic</title>
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}" />
+    <link rel="stylesheet" type="text/css" href="http://yui.yahooapis.com/combo?2.9.0/build/datatable/assets/skins/sam/datatable.css"> 
+    <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/themes/base/jquery-ui.css" type="text/css" media="all" />
+	<link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet" type="text/css" />
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"></script>
+    <script src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.15/jquery-ui.min.js"></script>
+    <script type="text/javascript" src="http://yui.yahooapis.com/combo?2.9.0/build/yahoo-dom-event/yahoo-dom-event.js&2.9.0/build/connection/connection_core-min.js&2.9.0/build/datasource/datasource-min.js&2.9.0/build/element/element-min.js&2.9.0/build/datatable/datatable-min.js&2.9.0/build/json/json-min.js"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/site.js') }}"></script>
+    <script language="javascript" type="text/javascript">
+    //<![CDATA[
+        $(document).ready(function() {
+            app.init();
+        });
+    //]]>
+    </script>
+</head>
+<body>
+<div id="content" class="yui-skin-sam">
+    <div id="tabs">
+        <div id="player-holder">
+            <audio id="player" controls="controls" autoplay="autoplay"></audio>
+        	<table cellspacing="0">
+        	<tr>
+            	<td>
+            		<table cellspacing="0" cellpadding="0">
+            		<tr>
+            		<td><a href="#" class="btnPrevious"><span>Previous</span></a></td>
+            		<td>
+            			<a href="#pause" class="btnPause hide"><span>Pause</span></a>
+            			<a href="#play" class="btnPlay"><span>Play</span></a>
+            		</td>
+            		<td><a href="#" class="btnNext"><span>Next</span></a></td>
+            		</tr>
+            		</table>
+            	</td>
+            	<td width="200">
+            		<div class="progressbar"></div>
+            	</td>
+            	<td><a href="#" class="btnShuffle"><span>Shuffle</span></a></td>
+        	</tr>
+        	</table>
+        </div>
+        <ul class="main">
+            <li><a href="#tabs-br">Browse</a></li>
+            <li><a href="#tabs-pl">Playlist</a></li>
+        </ul>
+        <div id="tabs-br" class="albums">
+            <div id="albums-table"></div>
+        </div>
+        <div id="tabs-pl">
+            <div id="search-container">
+                Search: <input type="text" name="s" id="s" value="" /> 
+                <img src="{{ url_for('static', filename='images/loading.gif') }}" alt="" class="search-loading hide" />
+            </div>
+            <div id="songs-table"></div>
+        </div>
+    </div>
+</div>
+<div class="preloadNotice"></div>
+</body>
+</html>
