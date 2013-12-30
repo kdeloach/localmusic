@@ -1,14 +1,17 @@
 ﻿import os
+import operator
 import sqlite3
 import sys
 import itertools
 
-db_full_path = '/cygdrive/f/music.db'
-music_full_path = '/cygdrive/f/Vuze Downloads/'
+from mutagen.mp3 import MP3
+
+db_full_path = 'C:\\Users\\kevin\\Music\\music.sqlite'
+music_full_path = 'C:\\Users\\kevin\\Music\\Amazon MP3\\'
 
 def install():
     con = sqlite3.connect(db_full_path)
-    con.execute('create table music(id integer primary key autoincrement, fullpath text)')
+    con.execute('create table music(id integer primary key autoincrement, artist text, album text, track text, title text, fullpath text)')
     con.commit()
     con.close()
 
@@ -16,7 +19,7 @@ def rebuild():
     con = sqlite3.connect(db_full_path)
     songs = list(list_music(music_full_path))
     con.execute('delete from music')
-    con.executemany('insert into music(fullpath) values (?)', songs)
+    con.executemany('insert into music(artist, album, track, title, fullpath) values (?, ?, ?, ?, ?)', songs)
     con.commit()
     con.close()
 
@@ -27,10 +30,11 @@ def search(query):
     con = sqlite3.connect(db_full_path)
     search_term = SearchTerm(query)
     sql = SearchTermSql(search_term)
-    sql = str(sql)
-    for id, fullpath in con.execute(sql):
-        path = fullpath.replace(music_full_path, '')
-        yield dict(id=id, name=path)
+    sql = unicode(sql)
+    for id, artist, album, track, title, fullpath in con.execute(sql):
+        name = fullpath.replace(music_full_path, '')
+        name = name.replace('.mp3', '')
+        yield dict(id=id, artist=artist, album=album, track=track, title=title, name=name)
     con.close()
 
 def get_by_id(id):
@@ -39,59 +43,54 @@ def get_by_id(id):
         rebuild()
     con = sqlite3.connect(db_full_path)
     cur = con.cursor()
-    sql = 'select id, fullpath from music where id=?'
+    sql = 'select id, artist, album, track, title, fullpath from music where id=?'
     cur.execute(sql, (id,))
     row = cur.fetchone()
     con.close()
     return row
 
-def group_results(songs, levels_deep=10):
-    result = {} if levels_deep > 0 else []
-    for song in songs:
-        path = song['name']
-        parts = path.split(os.sep)
-        last = min(len(parts) - 1, levels_deep)
-        last = max(last, 0)
-        filename = parts[last]
-        place = to_nested(result, parts[:last])
-        entry = dict(name=filename)
-        if entry not in place:
-            place.append(entry)
+def group_results(songs):
+    """Return songs grouped by artist and album. By convention, all song files should
+    use the following folder naming convention: {artist}/{album}/{title}.mp3"""
+    byartist = lambda song: song['artist']
+    byalbum = lambda song: song['album']
+    result = [
+        dict(name=artist_name, albums=[
+            dict(name=album_name, songs=list(album_songs))
+            for album_name, album_songs in itertools.groupby(artist_songs, byalbum)])
+        for artist_name, artist_songs in itertools.groupby(songs, byartist)]
     return result
 
-def to_nested(parent, parts):
-    if len(parts) == 0:
-        return parent
-    k = parts[0]
-    if len(parts) == 1:
-        if k not in parent:
-            parent[k] = []
-        return parent[k]
-    else:
-        if k not in parent:
-            parent[k] = {}
-        return to_nested(parent[k], parts[1:])
-
 def list_music(path):
+    ID3_23 = (2, 3, 0)
     for dirpath, dirnames, filenames in os.walk(path):
         for file in filenames:
             if file.endswith(('.mp3')):
                 fullpath = unicode(os.path.join(dirpath, file), errors='ignore')
-                yield fullpath,
+                mp3file = MP3(fullpath)
+                version = mp3file.tags.version
+                if version == ID3_23:
+                    artist = unicode(mp3file.tags['TPE1'])
+                    album = unicode(mp3file.tags['TALB'])
+                    track = unicode(mp3file.tags['TRCK'])
+                    title = unicode(mp3file.tags['TIT2'])
+                else:
+                    raise Exception('ID3 version ' + str(version) + ' not supported')
+                yield artist, album, track, title, fullpath
 
 
-#
-# term          := [^" ]+
-# exact_term    := "(term *)+"
-# positive_term := term | exact_term
-# negative_term := -(positive_term | negative_term)
-# terms         := (positiveterm | negative_term)+
-#
-# Examples:
-# "the beatles" "flaming lips" nirvana -"animal collective" -houston
-# "the beatles" -collective
-#
 class SearchTerm(object):
+    """
+    term          := .[^" ]+
+    exact_term    := "term+"
+    positive_term := term | exact_term
+    negative_term := -(positive_term | negative_term)
+    terms         := (positiveterm | negative_term)+
+
+    Examples:
+    "the beatles" "flaming lips" nirvana -"animal collective" -houston
+    "the beatles" -collective
+    """
 
     def __init__(self, input):
         self.input = input
@@ -190,7 +189,7 @@ class SearchTermSql(object):
         self.terms = list(search_term)
 
     def __str__(self):
-        return 'SELECT id, fullpath FROM music' + self.where_clause()
+        return 'SELECT id, artist, album, track, title, fullpath FROM music' + self.where_clause()
 
     def where_clause(self):
         positive_terms = [(type, value) for (type, value) in self.terms if type == 'POSITIVE']
@@ -210,14 +209,17 @@ class SearchTermSql(object):
     def term_where_clause(self, term):
         type, value = term
         if type == 'TERM':
-            escaped_value = value.replace("'", "\'")
-            return "fullpath LIKE '%" + escaped_value + "%'"
+            escaped_value = value.replace("'", "''")
+            cols = ['artist', 'album', 'title', 'fullpath']
+            return '(' + ' OR '.join([u"{0} LIKE '%{1}%'".format(col, escaped_value) for col in cols]) + ')'
         elif type == 'EXACT':
             return '(' + ' AND '.join([self.term_where_clause(t) for t in value]) + ')'
         elif type in ('POSITIVE', 'NEGATIVE'):
             return self.term_where_clause(value)
 
-            
+
 if __name__ == '__main__':
-    for row in search(' '.join(sys.argv[1:])):
-        print row
+    query = "\"Christopher O'Riley\" "#' '.join(sys.argv[1:])
+    results = search(query)
+    print list(results)
+
