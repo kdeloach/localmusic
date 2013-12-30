@@ -96,12 +96,11 @@ def download_song(id):
                 'Content-Length': length,
                 'Content-Range': 'bytes %s-%s/%s' % (start, stop, length)
             })
-
     with open(fullpath, 'rb') as f:
         f.seek(start)
         bytes = f.read(length)
-
     return make_response(bytes, status, headers)
+
 
 if __name__ == "__main__":
     app.debug = True
