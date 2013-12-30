@@ -2,48 +2,49 @@ import unittest
 from catalog import SearchTerm
 from catalog import SearchTermSql
 
-class TestSearchTerm(unittest.TestCase):
-    def test10(self):
+class SearchTermTest(unittest.TestCase):
+
+    def test_positive(self):
         tokens = list(SearchTerm('a'))
         self.assertEqual(tokens, [('POSITIVE', ('TERM', 'a'))])
 
-    def test20(self):
+    def test_negative(self):
         tokens = list(SearchTerm('-a'))
         self.assertEqual(tokens, [('NEGATIVE', ('POSITIVE', ('TERM', 'a')))])
 
-    def test30(self):
+    def test_positive_negative(self):
         tokens = list(SearchTerm('a -a'))
         self.assertEqual(tokens, [('POSITIVE', ('TERM', 'a')),
                                   ('NEGATIVE', ('POSITIVE', ('TERM', 'a')))])
-                                  
-    def test31(self):
+
+    def test_negative_positive(self):
         tokens = list(SearchTerm('-a a'))
         self.assertEqual(tokens, [('NEGATIVE', ('POSITIVE', ('TERM', 'a'))),
                                   ('POSITIVE', ('TERM', 'a'))])
 
-    def test40(self):
+    def test_multiple(self):
         tokens = list(SearchTerm('"a b"'))
         self.assertEqual(tokens, [('POSITIVE', ('EXACT', [('TERM', 'a'),
                                                           ('TERM', 'b')]))])
-                                                          
-    def test41(self):
+
+    def test_escaping0(self):
         tokens = list(SearchTerm("\"a\\\"b\""))
         self.assertEqual(tokens, [('POSITIVE', ('EXACT', [('TERM', 'a"b')]))])
-        
-    def test42(self):
+
+    def test_escaping1(self):
         tokens = list(SearchTerm("'a\\\'b'"))
         self.assertEqual(tokens, [('POSITIVE', ('EXACT', [('TERM', 'a\'b')]))])
-        
-    def test43(self):
+
+    def test_escaping2(self):
         tokens = list(SearchTerm("\"a'b\""))
         self.assertEqual(tokens, [('POSITIVE', ('EXACT', [('TERM', "a'b")]))])
-                                                          
-    def test50(self):
+
+    def test_negative_exact(self):
         tokens = list(SearchTerm('-"a b"'))
         self.assertEqual(tokens, [('NEGATIVE', ('POSITIVE', ('EXACT', [('TERM', 'a'),
                                                                        ('TERM', 'b')])))])
-                                                                       
-    def test60(self):
+
+    def test_mixed(self):
         tokens = list(SearchTerm('a -"b c" "d" -e f'))
         self.assertEqual(tokens, [('POSITIVE', ('TERM', 'a')),
                                   ('NEGATIVE', ('POSITIVE', ('EXACT', [('TERM', 'b'),
@@ -51,11 +52,7 @@ class TestSearchTerm(unittest.TestCase):
                                   ('POSITIVE', ('EXACT', [('TERM', 'd')])),
                                   ('NEGATIVE', ('POSITIVE', ('TERM', 'e'))),
                                   ('POSITIVE', ('TERM', 'f'))])
-                                  
-    def test70(self):
+
+    def test_empty(self):
         tokens = list(SearchTerm(''))
         self.assertEqual(tokens, [])
-        
-
-if __name__ == '__main__':
-    unittest.main()
