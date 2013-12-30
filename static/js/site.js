@@ -128,7 +128,10 @@ var app = {
         var self = this;
 
         var columns = [
-            {key: 'name', label: 'Name', sortable:true}
+            {key: 'artist', label: 'Artist', sortable:true},
+            {key: 'album', label: 'Album', sortable:true},
+            {key: 'title', label: 'Title', sortable:true},
+            {key: 'track', label: 'Track', sortable:true}
         ];
 
         this.myDataSource = new YAHOO.util.DataSource();
