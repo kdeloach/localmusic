@@ -52,13 +52,17 @@ def get_by_id(id):
 def group_results(songs):
     """Return songs grouped by artist and album. By convention, all song files should
     use the following folder naming convention: {artist}/{album}/{title}.mp3"""
-    byartist = lambda song: song['artist']
-    byalbum = lambda song: song['album']
+    def song_parts(songs):
+        for song in songs:
+            parts = song['name'].split(os.sep)
+            artist_part, album_part = parts[0:2]
+            song.update(artist_part=artist_part, album_part=album_part)
+            yield song
     result = [
         dict(name=artist_name, albums=[
             dict(name=album_name, songs=list(album_songs))
-            for album_name, album_songs in itertools.groupby(artist_songs, byalbum)])
-        for artist_name, artist_songs in itertools.groupby(songs, byartist)]
+            for album_name, album_songs in itertools.groupby(artist_songs, operator.itemgetter('album_part'))])
+        for artist_name, artist_songs in itertools.groupby(song_parts(songs), operator.itemgetter('artist_part'))]
     return result
 
 def list_music(path):
