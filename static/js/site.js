@@ -36,7 +36,7 @@ var app = {
         this.setupPlaylist();
 
         $(window).bind('hashchange', function(e) {
-            if(self.ignoreHashChange > 0) {
+            if (self.ignoreHashChange > 0) {
                 self.ignoreHashChange--;
                 return;
             }
@@ -44,7 +44,7 @@ var app = {
         });
 
         var qs = this.parseHash();
-        if(qs) {
+        if (qs) {
             this.currentSongId = qs.s;
             this.search.val(qs.q);
             this.locationChanged();
@@ -82,17 +82,30 @@ var app = {
     },
     setupInventory: function() {
         var self = this;
-        var albumFormatter = function(elCell, oRecord, oColumn, oData) {
+        var artistFormatter = function(elCell, oRecord, oColumn, oData) {
             elCell.innerHTML += '<a href="#" class="searchable">' + oData + '</a>';
         };
+        var albumFormatter = function(elCell, oRecord, oColumn, oData) {
+            var mid = Math.round(oData.length / 2);
+            var str = '<table class="album-table"><tr><td>';
+            $.each(oData, function(i, obj) {
+                if (i > 0 && i % mid == 0) {
+                    str += '</td><td>';
+                }
+                str += '<p><a href="#" class="searchable">' + obj.name + '</a></p>';
+            });
+            str += '</td></tr></table>';
+            elCell.innerHTML = str;
+        };
         var columns = [
-            {key: 'name', label: 'Name', formatter: albumFormatter}
+            {key: 'name', label: 'Artist', formatter: artistFormatter},
+            {key: 'albums', label: 'Albums', formatter: albumFormatter}
         ];
         this.dsArtists = new YAHOO.util.DataSource('inventory.json');
         this.dsArtists.responseType = YAHOO.util.DataSource.TYPE_JSON;
         this.dsArtists.responseSchema = {
             resultsList: 'result',
-            fields: ['name']
+            fields: ['name', 'albums']
         };
 
         this.dtArtists = new YAHOO.widget.DataTable("albums-table", columns, this.dsArtists, null);
@@ -142,7 +155,7 @@ var app = {
         });
     },
     parseHash: function() {
-        if(window.location.hash.length < 1) {
+        if (window.location.hash.length < 1) {
             return false;
         }
         var hash = window.location.hash.substr(1);
@@ -150,7 +163,7 @@ var app = {
         var q = null;
         var s = null;
         $.each(parts, function(i, part) {
-            if(part.indexOf('q=') != -1) {
+            if (part.indexOf('q=') != -1) {
                 q = part.substr(2);
             } else if (part.indexOf('s=') != -1) {
                 s = part.substr(2);
@@ -161,17 +174,17 @@ var app = {
     locationChanged: function() {
         var self = this;
         var info = this.parseHash();
-        if(!info) {
+        if (!info) {
             return;
         }
         var q = info.q;
         var s = info.s;
-        if(q == self.currentSearch) {
+        if (q == self.currentSearch) {
             q = null;
         }
-        if(q) {
+        if (q) {
             self.queueRebuildPlaylist(q, function() {
-                if(s) {
+                if (s) {
                     self.queueNextSong(s);
                 }
             });
@@ -182,10 +195,10 @@ var app = {
     updateProgressBarUI: function() {
         var currentTime = this.getCurrentTime();
         var duration = this.getDuration();
-        if(duration <= 0) {
+        if (duration <= 0) {
             return;
         }
-        if(currentTime >= duration) {
+        if (currentTime >= duration) {
             this.pause();
             this.gotoNextSong();
             return;
@@ -196,7 +209,7 @@ var app = {
     updateProgress: function(evt) {
         var bar = $(evt.currentTarget);
         var mouseX = evt.pageX;
-        if(Math.min(bar.width(), mouseX) <= 0) {
+        if (Math.min(bar.width(), mouseX) <= 0) {
             return;
         }
         var perc = (mouseX - bar.offset().left) / bar.width();
@@ -208,7 +221,7 @@ var app = {
     play: function() {
         var self = this;
         // there is no song selected to play
-        if(this.currentSong == null) {
+        if (this.currentSong == null) {
             this.loadInitialSong();
             return;
         }
@@ -230,7 +243,7 @@ var app = {
         var dt = this.myDataTable;
         var rs = dt.getRecordSet();
         var len = rs.getLength();
-        if(len == 0) {
+        if (len == 0) {
             return;
         }
         var data = this.originalData.slice();
@@ -259,7 +272,7 @@ var app = {
     loadInitialSong: function() {
         var dt = this.myDataTable;
         var rs = dt.getRecordSet();
-        if(rs.getLength() == 0) {
+        if (rs.getLength() == 0) {
             return;
         }
         var r = rs.getRecord(0);
@@ -275,7 +288,7 @@ var app = {
     gotoPreviousSong: function() {
         var dt = this.myDataTable;
         var rs = dt.getRecordSet();
-        if(rs.getLength() == 0) {
+        if (rs.getLength() == 0) {
             return;
         }
         var prevSongID = this.currentSong - 1 < 0 ? rs.getLength() - 1 : this.currentSong - 1;
@@ -285,7 +298,7 @@ var app = {
     gotoNextSong: function() {
         var dt = this.myDataTable;
         var rs = dt.getRecordSet();
-        if(rs.getLength() == 0) {
+        if (rs.getLength() == 0) {
             return;
         }
         var nextSongID = (this.currentSong + 1) % rs.getLength();
@@ -298,7 +311,7 @@ var app = {
         var len = rs.getLength();
         for(var i = 0; i < len; i++) {
             var r = rs.getRecord(i);
-            if(r.getData('id') == id) {
+            if (r.getData('id') == id) {
                 return {index: i, record: r};
             }
         }
@@ -306,8 +319,8 @@ var app = {
     },
     addToPlaylist: function(str) {
         var oldVal = this.search.val();
-        if(oldVal.length > 0) {
-            oldVal += ' || ';
+        if (oldVal.length > 0) {
+            oldVal += ' ';
         }
         oldVal += str;
         this.search.val(oldVal);
@@ -323,7 +336,7 @@ var app = {
     queueNextSong: function(id) {
         var self = this;
         var dt = this.myDataTable;
-        if(!this.songExistsInPlaylist(id)) {
+        if (!this.songExistsInPlaylist(id)) {
             return;
         }
         this.showPreloadNotice('Loading next song...');
@@ -353,7 +366,7 @@ var app = {
         var thisRequest = this.numRebuildPlaylistRequests;
         this.searchLoading.show();
         $.get('search.json', {q: query}, function(data) {
-            if(self.numRebuildPlaylistRequests > thisRequest) {
+            if (self.numRebuildPlaylistRequests > thisRequest) {
                 return;
             }
             self.originalData = data.result;
@@ -362,7 +375,7 @@ var app = {
             var dt = self.myDataTable;
             dt.deleteRows(0, dt.getRecordSet().getLength());
             dt.addRows(data.result);
-            if(self.songExistsInPlaylist(self.currentSongId)) {
+            if (self.songExistsInPlaylist(self.currentSongId)) {
                 self.highlightSong(self.currentSongId);
             } else {
                 self.currentSong = null;
@@ -370,10 +383,10 @@ var app = {
             }
             self.setWindowHash(query, self.currentSongId);
             self.search.val(query);
-            if(data.length == 0) {
+            if (data.length == 0) {
                 dt.showTableMessage(YAHOO.widget.DataTable.MSG_ERROR, YAHOO.widget.DataTable.CLASS_ERROR);
             }
-            if(callback) {
+            if (callback) {
                 callback();
             }
         });
@@ -382,7 +395,7 @@ var app = {
         return this.getRecordInfoFromId(id) != null;
     },
     highlightSong: function(id) {
-        if(id == null) {
+        if (id == null) {
             return;
         }
         var info = this.getRecordInfoFromId(id);
@@ -399,31 +412,26 @@ var app = {
     //@s current song
     setWindowHash: function(q, s) {
         var parts = [];
-        if(q != null) {
+        if (q != null) {
             parts.push('q=' + q);
         }
-        if(s != null) {
+        if (s != null) {
             parts.push('s=' + s);
         }
         var newHash = parts.join(',');
         var oldHash = window.location.hash;
         oldHash = oldHash.length > 1 ? oldHash.substr(1) : oldHash;
-        if(oldHash != newHash) {
+        if (oldHash != newHash) {
             this.ignoreHashChange++;
         }
         window.location.hash = newHash;
     },
     loadAlbumArt: function(id) {
-        // dont want to use up my 100/day request limit during development
-        return;
-        $.get('art/' + id, function(data) {
-            if(data && data.responseData && data.responseData.results) {
-                if(data.responseData.results.length > 0) {
-                    var n = Math.round(Math.random() * (data.responseData.results.length));
-                    var img = data.responseData.results[n].tbUrl;
-                    //var img = data.responseData.results[n].url;
-                    $('#player-holder').css({backgroundImage: 'url(' + img + ')'});
-                }
+        $.get('art/' + id + '.json', function(data) {
+            if (data && data.items && data.items.length > 0) {
+                var n = Math.floor(Math.random() * data.items.length);
+                var imgUrl = data.items[n].link;
+                $('#player-holder').css({backgroundImage: 'url(' + imgUrl + ')'});
             }
         });
     }
