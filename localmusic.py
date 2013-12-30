@@ -1,11 +1,14 @@
-﻿from flask import Flask
+﻿import os
+import catalog
+import requests
+import urllib
+
+from flask import Flask
 from flask import render_template
 from flask import jsonify
 from flask import request
 from flask import send_file
 from flask import make_response
-import catalog
-import os
 
 app = Flask(__name__)
 
@@ -17,11 +20,11 @@ def index():
 def rebuild():
     catalog.rebuild()
     return jsonify(result='OK')
-    
+
 @app.route('/inventory.json')
 def inventory():
     results = catalog.search('')
-    grouped = catalog.group_results(results, levels_deep=0)
+    grouped = catalog.group_results(results)
     return jsonify(result=grouped)
 
 @app.route('/search.json')
@@ -30,19 +33,36 @@ def search_catalog():
         query = request.args.get('q', '')
         results = list(catalog.search(query))
     except:
+        raise
         results = []
     return jsonify(result=results)
 
+@app.route('/art/<int:id>.json')
+def art(id):
+    id, artist, album, track, title, fullpath = catalog.get_by_id(id)
+    status = 200
+    headers = {
+        'Content-Type': 'application/json'
+    }
+    params = {
+        'cx': '013298434435660591847:iobys90t8ak',
+        'imgSize': 'medium',
+        'safe': 'medium',
+        'searchType': 'image',
+        'key': 'AIzaSyALp6qvMuW2uGx1qg_kvmE-UtFPyZvoVqA',
+        'q': title + ' ' + album + ' ' + artist
+    }
+    response = requests.get('https://www.googleapis.com/customsearch/v1', params=params)
+    return make_response(response.text, status, headers)
+
 @app.route('/download/<int:id>.mp3')
 def download_song(id):
-    id, full_path = catalog.get_by_id(id)
-    
-    filesize = os.path.getsize(full_path)
+    id, artist, album, track, title, fullpath = catalog.get_by_id(id)
+    filesize = os.path.getsize(fullpath)
     start = 0
     stop = filesize - 1
     length = stop - start + 1
-    
-    status = '200 OK'
+    status = 200
     headers = {
         'Accept-Ranges': 'bytes',
         'Content-Type': 'audio/mpeg',
@@ -76,8 +96,8 @@ def download_song(id):
                 'Content-Length': length,
                 'Content-Range': 'bytes %s-%s/%s' % (start, stop, length)
             })
-    
-    with open(full_path) as f:
+
+    with open(fullpath, 'rb') as f:
         f.seek(start)
         bytes = f.read(length)
 
@@ -85,4 +105,4 @@ def download_song(id):
 
 if __name__ == "__main__":
     app.debug = True
-    app.run()
+    app.run(port=80)
